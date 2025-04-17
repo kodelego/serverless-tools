@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS SAM template for Media Downloader function
+
+Resources:
+  MediaDownloaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 900
+      Role: !GetAtt MediaDownloaderFunctionRole.Arn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          AWS_REGION: !Ref AWS::Region
+          DYNAMODB_TABLE_NAME: !Ref DynamoDBTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /download
+            Method: post
+
+  MediaDownloaderFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: arn:aws:s3:::*/*
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource: arn:aws:dynamodb:*:*:table/*
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket to upload media files
+  DynamoDBTableName:
+    Type: String
+    Description: Name of the DynamoDB table to store metadata
